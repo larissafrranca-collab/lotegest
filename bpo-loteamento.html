@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoteGest — BPO Loteamentos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2330;--border:#2a3244;--accent:#00c896;--accent2:#00a87e;--accent-glow:rgba(0,200,150,0.15);--warn:#f59e0b;--danger:#ef4444;--info:#3b82f6;--text:#e6edf3;--text2:#8b949e;--text3:#4a5568;--radius:12px;--radius-sm:8px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow-x:hidden}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+#sidebar{width:230px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s ease}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.logo-mark{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--accent);letter-spacing:-.5px}
+.logo-sub{font-size:.68rem;color:var(--text2);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-section{font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:14px 10px 6px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text2);font-size:.875rem;font-weight:500;transition:all .15s;margin-bottom:2px;border:1px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-glow);color:var(--accent);border-color:rgba(0,200,150,.25)}
+.nav-item .icon{font-size:1rem;width:18px;text-align:center}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border);font-size:.75rem;color:var(--text3)}
+.user-chip{display:flex;align-items:center;gap:10px}
+.user-avatar{width:30px;height:30px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#000}
+#main{margin-left:230px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:58px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:50}
+.topbar-title{font-family:'DM Serif Display',serif;font-size:1.2rem;flex:1}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:6px 14px;width:200px;transition:border-color .2s}
+.search-box:focus-within{border-color:var(--accent)}
+.search-box input{background:none;border:none;outline:none;color:var(--text);font-size:.8rem;width:100%;font-family:'DM Sans',sans-serif}
+.search-box input::placeholder{color:var(--text3)}
+.topbar-btn{background:var(--accent);color:#000;border:none;border-radius:var(--radius-sm);padding:7px 16px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;white-space:nowrap}
+.topbar-btn:hover{background:var(--accent2)}
+.menu-toggle{display:none;background:none;border:none;color:var(--text);font-size:1.3rem;cursor:pointer}
+.content{padding:24px;flex:1;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+.kpi-card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.kpi-card::before{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:0 var(--radius) 0 60px;opacity:.1}
+.kpi-card.green::before{background:var(--accent)}.kpi-card.yellow::before{background:var(--warn)}.kpi-card.red::before{background:var(--danger)}.kpi-card.blue::before{background:var(--info)}
+.kpi-label{font-size:.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:8px}
+.kpi-value{font-family:'DM Serif Display',serif;font-size:1.8rem;line-height:1}
+.kpi-sub{font-size:.72rem;color:var(--text2);margin-top:6px}
+.kpi-icon{position:absolute;top:18px;right:18px;font-size:1.3rem;opacity:.6}
+.kpi-card.green .kpi-icon{color:var(--accent)}.kpi-card.yellow .kpi-icon{color:var(--warn)}.kpi-card.red .kpi-icon{color:var(--danger)}.kpi-card.blue .kpi-icon{color:var(--info)}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-toolbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+table{width:100%;border-collapse:collapse}
+thead th{padding:11px 16px;text-align:left;font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:12px 16px;font-size:.84rem;vertical-align:middle}
+.tbl-scroll{overflow-x:auto}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;white-space:nowrap}
+.badge-green{background:rgba(0,200,150,.15);color:var(--accent)}.badge-red{background:rgba(239,68,68,.15);color:#f87171}.badge-yellow{background:rgba(245,158,11,.15);color:#fbbf24}.badge-blue{background:rgba(59,130,246,.15);color:#60a5fa}.badge-gray{background:rgba(139,148,158,.15);color:var(--text2)}.badge-purple{background:rgba(167,139,250,.15);color:#a78bfa}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;border:none;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#000}.btn-primary:hover{background:var(--accent2)}
+.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:5px 11px;font-size:.75rem}
+.btn-danger{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.2)}.btn-danger:hover{background:rgba(239,68,68,.25)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.main-side{display:grid;grid-template-columns:1fr 300px;gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-weight:600;font-size:.9rem}
+.card-body{padding:20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+label{font-size:.76rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:.875rem;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--surface)}
+textarea{resize:vertical;min-height:80px}
+.alert{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:10px}
+.alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fbbf24}
+.alert-danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171}
+.alert-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);color:#60a5fa}
+.progress{background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .6s ease}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-backdrop.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;transform:translateY(20px);transition:transform .2s}
+.modal-backdrop.open .modal{transform:translateY(0)}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-family:'DM Serif Display',serif;font-size:1.1rem}
+.modal-close{background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background .15s}
+.modal-close:hover{background:var(--surface2)}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--accent);color:var(--accent);padding:12px 20px;border-radius:var(--radius-sm);font-size:.84rem;font-weight:600;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s ease;max-width:320px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.error{border-color:var(--danger);color:#f87171}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:9px 18px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.mini-stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.mini-stat{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 16px}
+.mini-stat-val{font-weight:700;font-size:1.1rem}
+.mini-stat-lbl{font-size:.7rem;color:var(--text2)}
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);font-size:.875rem;gap:10px}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text2)}
+.empty-state .icon{font-size:2.5rem;margin-bottom:12px}
+.page{display:none}.page.active{display:block}
+.chart-placeholder{height:140px;display:flex;align-items:flex-end;padding:10px;gap:6px;background:linear-gradient(to right,rgba(0,200,150,.05),rgba(0,200,150,.12),rgba(0,200,150,.05));border-radius:var(--radius-sm)}
+.bar{flex:1;background:var(--accent);border-radius:4px 4px 0 0;opacity:.7;min-width:10px;transition:opacity .2s}.bar:hover{opacity:1}
+.ranking-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}.ranking-item:last-child{border-bottom:none}
+.rank-pos{width:22px;height:22px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--text2);flex-shrink:0}
+.rank-pos.gold{background:rgba(251,191,36,.2);color:#fbbf24}.rank-pos.silver{background:rgba(156,163,175,.2);color:#9ca3af}.rank-pos.bronze{background:rgba(180,83,9,.2);color:#b45309}
+.rank-name{flex:1;font-size:.84rem;font-weight:600}.rank-value{font-size:.82rem;font-weight:700;color:var(--accent)}
+@media(max-width:900px){#sidebar{transform:translateX(-100%)}#sidebar.open{transform:translateX(0)}#main{margin-left:0}.menu-toggle{display:flex}.two-col,.main-side{grid-template-columns:1fr}.three-col{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.form-grid.three{grid-template-columns:1fr}}
+@media(max-width:500px){.three-col{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}.content{padding:16px}}
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">LoteGest</div>
+    <div class="logo-sub">BPO · Loteamentos</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)"><span class="icon">◈</span> Dashboard</div>
+    <div class="nav-section">Cadastros</div>
+    <div class="nav-item" onclick="nav('clientes',this)"><span class="icon">👤</span> Clientes</div>
+    <div class="nav-item" onclick="nav('empreendimentos',this)"><span class="icon">🏙️</span> Empreendimentos</div>
+    <div class="nav-item" onclick="nav('corretores',this)"><span class="icon">🤝</span> Corretores</div>
+    <div class="nav-section">Financeiro</div>
+    <div class="nav-item" onclick="nav('parcelas',this)"><span class="icon">📋</span> Parcelas</div>
+    <div class="nav-item" onclick="nav('inadimplencia',this)"><span class="icon">⚠️</span> Inadimplência</div>
+    <div class="nav-item" onclick="nav('comissoes',this)"><span class="icon">💸</span> Comissões</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="user-avatar">AD</div>
+      <div><div style="font-size:.78rem;font-weight:600;color:var(--text)">Administrador</div><div id="dbStatus" style="color:var(--accent)">● Conectado</div></div>
+    </div>
+  </div>
+</aside>
+
+<div id="main">
+  <header class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <div class="topbar-title" id="pageTitle">Dashboard</div>
+    <div class="search-box"><span>🔍</span><input type="text" placeholder="Buscar..." id="globalSearch"></div>
+    <button class="topbar-btn" id="topbarBtn" onclick="topbarAction()">+ Novo</button>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div class="content page active" id="page-dashboard">
+    <div class="kpi-grid">
+      <div class="kpi-card green"><div class="kpi-icon">💰</div><div class="kpi-label">Recebido no Mês</div><div class="kpi-value" id="kpiRecebido">—</div><div class="kpi-sub">parcelas pagas este mês</div></div>
+      <div class="kpi-card yellow"><div class="kpi-icon">⏳</div><div class="kpi-label">Em Aberto</div><div class="kpi-value" id="kpiAberto">—</div><div class="kpi-sub">parcelas pendentes</div></div>
+      <div class="kpi-card red"><div class="kpi-icon">⚠️</div><div class="kpi-label">Inadimplentes</div><div class="kpi-value" id="kpiInadim">—</div><div class="kpi-sub">parcelas atrasadas</div></div>
+      <div class="kpi-card blue"><div class="kpi-icon">👥</div><div class="kpi-label">Clientes</div><div class="kpi-value" id="kpiClientes">—</div><div class="kpi-sub">cadastrados</div></div>
+    </div>
+    <div class="main-side">
+      <div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><span class="card-title">Recebimentos — Últimos 6 meses</span></div>
+          <div class="card-body">
+            <div class="chart-placeholder" id="chartBars">
+              <div class="bar" style="height:40%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:35%"></div><div class="bar" style="height:70%"></div><div class="bar" style="height:50%"></div><div class="bar" style="height:80%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.7rem;color:var(--text2)" id="chartLabels"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><span class="card-title">🔔 Alertas</span></div>
+          <div class="card-body" id="alertsBox">
+            <div class="loading"><div class="spinner"></div> Carregando...</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <div class="table-toolbar"><span class="card-title">Últimos Clientes</span></div>
+          <div class="tbl-scroll"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Status</th></tr></thead><tbody id="tbodyDashClientes"><tr><td colspan="3"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><span class="card-title">🏙️ Empreendimentos</span></div>
+          <div class="card-body" style="padding:12px 16px" id="dashEmpr"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">🏆 Ranking Corretores</span></div>
+          <div class="card-body" style="padding:12px 16px" id="dashRanking"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div class="content page" id="page-clientes">
+    <div class="mini-stats" id="statsClientes"></div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <span class="card-title">Clientes Cadastrados</span>
+        <select style="width:auto;padding:6px 12px;font-size:.8rem" onchange="renderClientes(this.value)"><option value="">Todos</option><option>Ativo</option><option>Inadimplente</option><option>Quitado</option></select>
+      </div>
+      <div class="tbl-scroll"><table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tbodyClientes"><tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- EMPREENDIMENTOS -->
+  <div class="content page" id="page-empreendimentos">
+    <div id="emprCards" class="three-col"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- CORRETORES -->
+  <div class="content page" id="page-corretores">
+    <div class="table-wrap">
+      <div class="table-toolbar"><span class="card-title">Corretores</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>Nome</th><th>CRECI</th><th>Telefone</th><th>% Comissão</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tbodyCorretores"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- PARCELAS -->
+  <div class="content page" id="page-parcelas">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'tab-todas')">Todas</div>
+      <div class="tab" onclick="switchTab(this,'tab-atrasadas')">Atrasadas</div>
+      <div class="tab" onclick="switchTab(this,'tab-pendentes')">Pendentes</div>
+      <div class="tab" onclick="switchTab(this,'tab-pagas')">Pagas</div>
+    </div>
+    <div id="tab-todas">
+      <div class="table-wrap"><div class="table-toolbar"><span class="card-title">Todas as Parcelas</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>#</th><th>Cliente</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tbodyTodasParcelas"></tbody></table></div></div>
+    </div>
+    <div id="tab-atrasadas" style="display:none">
+      <div class="table-wrap"><div class="table-toolbar"><span class="card-title">Parcelas Atrasadas</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>Cliente</th><th>Valor</th><th>Vencimento</th><th>Dias Atraso</th><th>Ações</th></tr></thead><tbody id="tbodyAtrasadas"></tbody></table></div></div>
+    </div>
+    <div id="tab-pendentes" style="display:none">
+      <div class="table-wrap"><div class="table-toolbar"><span class="card-title">Parcelas Pendentes</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>Cliente</th><th>Valor</th><th>Vencimento</th><th>Ações</th></tr></thead><tbody id="tbodyPendentes"></tbody></table></div></div>
+    </div>
+    <div id="tab-pagas" style="display:none">
+      <div class="table-wrap"><div class="table-toolbar"><span class="card-title">Parcelas Pagas</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>Cliente</th><th>Valor</th><th>Dt Pagamento</th></tr></thead><tbody id="tbodyPagas"></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- INADIMPLÊNCIA -->
+  <div class="content page" id="page-inadimplencia">
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+      <div class="kpi-card red"><div class="kpi-icon">👥</div><div class="kpi-label">Clientes Inadimplentes</div><div class="kpi-value" id="kpiInadimClientes">—</div></div>
+      <div class="kpi-card red"><div class="kpi-icon">💰</div><div class="kpi-label">Valor em Atraso</div><div class="kpi-value" id="kpiInadimValor">—</div></div>
+      <div class="kpi-card yellow"><div class="kpi-icon">📋</div><div class="kpi-label">Parcelas Atrasadas</div><div class="kpi-value" id="kpiInadimParcelas">—</div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar"><span class="card-title">Clientes em Atraso</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>Cliente</th><th>Valor</th><th>Vencimento</th><th>Dias Atraso</th><th>Ações</th></tr></thead><tbody id="tbodyInadim"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- COMISSÕES -->
+  <div class="content page" id="page-comissoes">
+    <div class="mini-stats" id="statsComissoes"></div>
+    <div class="table-wrap">
+      <div class="table-toolbar"><span class="card-title">Comissões</span></div>
+      <div class="tbl-scroll"><table><thead><tr><th>Corretor</th><th>% Comissão</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tbodyComissoes"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="modal-backdrop" id="modalCliente">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Novo Cliente</span><button class="modal-close" onclick="closeModal('modalCliente')">✕</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="form-group full"><label>Nome Completo *</label><input id="c_nome" type="text" placeholder="João da Silva"></div>
+      <div class="form-group"><label>CPF / CNPJ</label><input id="c_cpf" type="text" placeholder="000.000.000-00"></div>
+      <div class="form-group"><label>Telefone</label><input id="c_tel" type="text" placeholder="(62) 99999-0000"></div>
+      <div class="form-group"><label>E-mail</label><input id="c_email" type="email" placeholder="email@exemplo.com"></div>
+      <div class="form-group"><label>Profissão</label><input id="c_prof" type="text" placeholder="Ex: Servidor Público"></div>
+      <div class="form-group"><label>Status</label><select id="c_status"><option>Ativo</option><option>Inadimplente</option><option>Quitado</option></select></div>
+      <div class="form-group full"><label>Endereço</label><input id="c_end" type="text" placeholder="Rua, número, bairro, cidade - UF"></div>
+      <div class="form-group full"><label>Observações</label><textarea id="c_obs" placeholder="Informações adicionais..."></textarea></div>
+    </div></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalCliente')">Cancelar</button><button class="btn btn-primary" onclick="salvarCliente()">Salvar Cliente</button></div>
+  </div>
+</div>
+
+<!-- MODAL EMPREENDIMENTO -->
+<div class="modal-backdrop" id="modalEmpr">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Novo Empreendimento</span><button class="modal-close" onclick="closeModal('modalEmpr')">✕</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="form-group full"><label>Nome *</label><input id="e_nome" type="text" placeholder="Jardim das Flores"></div>
+      <div class="form-group"><label>Cidade</label><input id="e_cidade" type="text" placeholder="Goiânia"></div>
+      <div class="form-group"><label>Estado</label><select id="e_estado"><option>GO</option><option>SP</option><option>MG</option><option>RJ</option><option>MT</option><option>MS</option><option>DF</option><option>PA</option><option>BA</option><option>PR</option><option>SC</option><option>RS</option></select></div>
+      <div class="form-group full"><label>Endereço</label><input id="e_end" type="text" placeholder="Rodovia, km, bairro..."></div>
+      <div class="form-group"><label>Total de Lotes</label><input id="e_lotes" type="number" placeholder="0"></div>
+      <div class="form-group"><label>Status</label><select id="e_status"><option>Em Vendas</option><option>Lançamento</option><option>Encerrado</option></select></div>
+    </div></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalEmpr')">Cancelar</button><button class="btn btn-primary" onclick="salvarEmpr()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL CORRETOR -->
+<div class="modal-backdrop" id="modalCorretor">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Novo Corretor</span><button class="modal-close" onclick="closeModal('modalCorretor')">✕</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="form-group full"><label>Nome Completo *</label><input id="cor_nome" type="text" placeholder="Felipe Andrade"></div>
+      <div class="form-group"><label>CRECI</label><input id="cor_creci" type="text" placeholder="GO-12345"></div>
+      <div class="form-group"><label>CPF</label><input id="cor_cpf" type="text" placeholder="000.000.000-00"></div>
+      <div class="form-group"><label>Telefone</label><input id="cor_tel" type="text" placeholder="(62) 99999-0000"></div>
+      <div class="form-group"><label>E-mail</label><input id="cor_email" type="email" placeholder="corretor@email.com"></div>
+      <div class="form-group"><label>% Comissão Padrão</label><input id="cor_pct" type="number" placeholder="3" step="0.5"></div>
+      <div class="form-group"><label>Status</label><select id="cor_status"><option>Ativo</option><option>Inativo</option></select></div>
+    </div></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalCorretor')">Cancelar</button><button class="btn btn-primary" onclick="salvarCorretor()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL PARCELA -->
+<div class="modal-backdrop" id="modalParcela">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nova Parcela</span><button class="modal-close" onclick="closeModal('modalParcela')">✕</button></div>
+    <div class="modal-body"><div class="form-grid">
+      <div class="form-group full"><label>Cliente *</label><select id="p_cliente"></select></div>
+      <div class="form-group"><label>Valor (R$) *</label><input id="p_valor" type="number" placeholder="0,00" step="0.01"></div>
+      <div class="form-group"><label>Vencimento *</label><input id="p_venc" type="date"></div>
+      <div class="form-group"><label>Número da Parcela</label><input id="p_num" type="number" placeholder="1"></div>
+      <div class="form-group"><label>Status</label><select id="p_status"><option>Pendente</option><option>Pago</option><option>Atrasado</option></select></div>
+    </div></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalParcela')">Cancelar</button><button class="btn btn-primary" onclick="salvarParcela()">Salvar Parcela</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99" onclick="toggleSidebar()"></div>
+
+<script>
+// ─── SUPABASE CONFIG ───
+const SUPA_URL = 'https://fqfdvjkxfdssqkvwofqg.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZmR2amt4ZmRzc3FrdndvZnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMTI0NjQsImV4cCI6MjA4OTU4ODQ2NH0.UDon-EGTfmSZf19laTWiqdTG2B01tv5rlxQ1KMqdp3o';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+// ─── HELPERS ───
+function bs(s){const m={Ativo:'badge-green',Inadimplente:'badge-red',Quitado:'badge-gray',Reservado:'badge-yellow','Em Vendas':'badge-green',Lançamento:'badge-purple',Encerrado:'badge-gray',Pago:'badge-green',Atrasado:'badge-red',Pendente:'badge-yellow',Inativo:'badge-gray'};return`<span class="badge ${m[s]||'badge-gray'}">${s}</span>`}
+function fmt(v){if(!v&&v!==0)return'—';return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+function fmtDate(d){if(!d)return'—';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('pt-BR')}
+function diasAtraso(d){if(!d)return 0;const hoje=new Date();const venc=new Date(d+'T00:00:00');return Math.floor((hoje-venc)/(1000*60*60*24))}
+let toastT;
+function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(err?' error':'');clearTimeout(toastT);toastT=setTimeout(()=>t.className='',3500)}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+function switchTab(el,id){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('[id^="tab-"]').forEach(t=>t.style.display='none');el.classList.add('active');document.getElementById(id).style.display='block';}
+function toggleSidebar(){const s=document.getElementById('sidebar'),o=document.getElementById('sidebarOverlay');s.classList.toggle('open');o.style.display=s.classList.contains('open')?'block':'none';}
+
+// meses
+const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function initChartLabels(){const hoje=new Date();const lb=[];for(let i=5;i>=0;i--){const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);lb.push(meses[d.getMonth()]);}document.getElementById('chartLabels').innerHTML=lb.map(m=>`<span>${m}</span>`).join('');}
+
+// ─── DASHBOARD ───
+async function loadDashboard(){
+  initChartLabels();
+  // clientes
+  const {data:cls,error:e1}=await db.from('clientes').select('id,nome,telefone,status',{count:'exact'});
+  if(!e1&&cls){
+    document.getElementById('kpiClientes').textContent=cls.length;
+    document.getElementById('tbodyDashClientes').innerHTML=cls.slice(0,5).map(c=>`<tr><td><strong>${c.nome}</strong></td><td>${c.telefone||'—'}</td><td>${bs(c.status)}</td></tr>`).join('')||'<tr><td colspan="3"><div class="empty-state"><div class="icon">👤</div><div>Nenhum cliente cadastrado</div></div></td></tr>';
+  }
+  // parcelas
+  const {data:parc}=await db.from('parcelas').select('*');
+  if(parc){
+    const hoje=new Date().toISOString().split('T')[0];
+    const pagas=parc.filter(p=>p.status==='Pago');
+    const atrasadas=parc.filter(p=>p.status==='Atrasado'||(p.status==='Pendente'&&p.vencimento<hoje));
+    const pendentes=parc.filter(p=>p.status==='Pendente'&&p.vencimento>=hoje);
+    document.getElementById('kpiRecebido').textContent=fmt(pagas.reduce((a,p)=>a+Number(p.valor),0));
+    document.getElementById('kpiAberto').textContent=pendentes.length+' parcelas';
+    document.getElementById('kpiInadim').textContent=atrasadas.length+' parcelas';
+    // alertas
+    const box=document.getElementById('alertsBox');
+    let html='';
+    if(atrasadas.length>0)html+=`<div class="alert alert-danger">🚨 <div><strong>${atrasadas.length} parcelas atrasadas.</strong> Verifique o módulo de inadimplência.</div></div>`;
+    const semana=new Date();semana.setDate(semana.getDate()+7);
+    const vencSemana=pendentes.filter(p=>p.vencimento<=semana.toISOString().split('T')[0]);
+    if(vencSemana.length>0)html+=`<div class="alert alert-warn">⏰ <div><strong>${vencSemana.length} parcelas vencem esta semana.</strong></div></div>`;
+    if(!html)html='<div style="color:var(--text2);font-size:.85rem">✅ Nenhum alerta no momento.</div>';
+    box.innerHTML=html;
+  }
+  // empreendimentos
+  const {data:emprs}=await db.from('empreendimentos').select('*');
+  const dashEmpr=document.getElementById('dashEmpr');
+  if(emprs&&emprs.length>0){
+    dashEmpr.innerHTML=emprs.slice(0,3).map(e=>`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:.82rem;font-weight:600">${e.nome}</span><span style="font-size:.75rem;color:var(--text2)">${e.cidade||''}</span></div><div class="progress"><div class="progress-fill" style="width:${e.total_lotes>0?40:0}%"></div></div></div>`).join('');
+  } else {
+    dashEmpr.innerHTML='<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:10px">Nenhum empreendimento</div>';
+  }
+  // corretores ranking
+  const {data:corrs}=await db.from('corretores').select('*').eq('status','Ativo').limit(4);
+  const rank=document.getElementById('dashRanking');
+  const posClass=['gold','silver','bronze',''];
+  if(corrs&&corrs.length>0){
+    rank.innerHTML=corrs.map((c,i)=>`<div class="ranking-item"><div class="rank-pos ${posClass[i]||''}">${i+1}</div><div class="rank-name">${c.nome}</div><div class="rank-value">${c.comissao_pct||3}%</div></div>`).join('');
+  } else {
+    rank.innerHTML='<div style="color:var(--text2);font-size:.82rem;text-align:center;padding:10px">Nenhum corretor</div>';
+  }
+}
+
+// ─── CLIENTES ───
+async function renderClientes(filtro=''){
+  const tbody=document.getElementById('tbodyClientes');
+  tbody.innerHTML='<tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  let q=db.from('clientes').select('*').order('created_at',{ascending:false});
+  if(filtro)q=q.eq('status',filtro);
+  const {data,error}=await q;
+  if(error){tbody.innerHTML=`<tr><td colspan="6" style="color:var(--danger);padding:20px">${error.message}</td></tr>`;return;}
+  if(!data||data.length===0){tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="icon">👤</div><div>Nenhum cliente encontrado</div></div></td></tr>';return;}
+  tbody.innerHTML=data.map(c=>`<tr><td><strong>${c.nome}</strong></td><td>${c.cpf||'—'}</td><td>${c.telefone||'—'}</td><td>${c.email||'—'}</td><td>${bs(c.status)}</td><td><button class="btn btn-danger btn-sm" onclick="deletarCliente('${c.id}')">🗑️</button></td></tr>`).join('');
+  // stats
+  const tot=data.length,atv=data.filter(c=>c.status==='Ativo').length,inad=data.filter(c=>c.status==='Inadimplente').length,quit=data.filter(c=>c.status==='Quitado').length;
+  document.getElementById('statsClientes').innerHTML=`<div class="mini-stat"><div class="mini-stat-val">${tot}</div><div class="mini-stat-lbl">Total</div></div><div class="mini-stat"><div class="mini-stat-val" style="color:var(--accent)">${atv}</div><div class="mini-stat-lbl">Ativos</div></div><div class="mini-stat"><div class="mini-stat-val" style="color:var(--danger)">${inad}</div><div class="mini-stat-lbl">Inadimplentes</div></div><div class="mini-stat"><div class="mini-stat-val" style="color:var(--text2)">${quit}</div><div class="mini-stat-lbl">Quitados</div></div>`;
+}
+async function salvarCliente(){
+  const nome=document.getElementById('c_nome').value.trim();
+  if(!nome){toast('Nome é obrigatório!',true);return;}
+  const {error}=await db.from('clientes').insert({nome,cpf:document.getElementById('c_cpf').value,telefone:document.getElementById('c_tel').value,email:document.getElementById('c_email').value,endereco:document.getElementById('c_end').value,profissao:document.getElementById('c_prof').value,status:document.getElementById('c_status').value,observacoes:document.getElementById('c_obs').value});
+  if(error){toast('Erro: '+error.message,true);return;}
+  closeModal('modalCliente');
+  toast('✅ Cliente salvo com sucesso!');
+  renderClientes();
+  loadDashboard();
+  // limpa
+  ['c_nome','c_cpf','c_tel','c_email','c_end','c_prof','c_obs'].forEach(id=>document.getElementById(id).value='');
+}
+async function deletarCliente(id){
+  if(!confirm('Excluir este cliente?'))return;
+  const {error}=await db.from('clientes').delete().eq('id',id);
+  if(error){toast('Erro ao excluir: '+error.message,true);return;}
+  toast('🗑️ Cliente excluído.');renderClientes();
+}
+
+// ─── EMPREENDIMENTOS ───
+async function renderEmpreendimentos(){
+  const wrap=document.getElementById('emprCards');
+  wrap.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  const {data,error}=await db.from('empreendimentos').select('*').order('created_at',{ascending:false});
+  if(error||!data||data.length===0){wrap.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏙️</div><div>Nenhum empreendimento cadastrado</div><div style="margin-top:12px"><button class="btn btn-primary" onclick="openModal(\'modalEmpr\')">+ Cadastrar Empreendimento</button></div></div>';return;}
+  wrap.innerHTML=data.map(e=>`<div class="card"><div class="card-header"><span class="card-title">${e.nome}</span>${bs(e.status)}</div><div class="card-body"><div style="font-size:.8rem;color:var(--text2);margin-bottom:12px">📍 ${e.cidade||''}${e.estado?', '+e.estado:''}</div><div style="font-size:.82rem;margin-bottom:4px">Total de lotes: <strong>${e.total_lotes||0}</strong></div><div class="progress"><div class="progress-fill" style="width:30%"></div></div><div style="margin-top:14px;display:flex;gap:8px"><button class="btn btn-danger btn-sm" onclick="deletarEmpr('${e.id}')">🗑️ Excluir</button></div></div></div>`).join('');
+}
+async function salvarEmpr(){
+  const nome=document.getElementById('e_nome').value.trim();
+  if(!nome){toast('Nome é obrigatório!',true);return;}
+  const {error}=await db.from('empreendimentos').insert({nome,cidade:document.getElementById('e_cidade').value,estado:document.getElementById('e_estado').value,endereco:document.getElementById('e_end').value,total_lotes:parseInt(document.getElementById('e_lotes').value)||0,status:document.getElementById('e_status').value});
+  if(error){toast('Erro: '+error.message,true);return;}
+  closeModal('modalEmpr');toast('✅ Empreendimento salvo!');renderEmpreendimentos();loadDashboard();
+}
+async function deletarEmpr(id){
+  if(!confirm('Excluir este empreendimento?'))return;
+  const {error}=await db.from('empreendimentos').delete().eq('id',id);
+  if(error){toast('Erro: '+error.message,true);return;}
+  toast('🗑️ Excluído.');renderEmpreendimentos();
+}
+
+// ─── CORRETORES ───
+async function renderCorretores(){
+  const tbody=document.getElementById('tbodyCorretores');
+  tbody.innerHTML='<tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  const {data,error}=await db.from('corretores').select('*').order('created_at',{ascending:false});
+  if(error||!data||data.length===0){tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="icon">🤝</div><div>Nenhum corretor cadastrado</div></div></td></tr>';return;}
+  tbody.innerHTML=data.map(c=>`<tr><td><strong>${c.nome}</strong></td><td>${c.creci||'—'}</td><td>${c.telefone||'—'}</td><td>${c.comissao_pct||3}%</td><td>${bs(c.status)}</td><td><button class="btn btn-danger btn-sm" onclick="deletarCorretor('${c.id}')">🗑️</button></td></tr>`).join('');
+}
+async function salvarCorretor(){
+  const nome=document.getElementById('cor_nome').value.trim();
+  if(!nome){toast('Nome é obrigatório!',true);return;}
+  const {error}=await db.from('corretores').insert({nome,creci:document.getElementById('cor_creci').value,cpf:document.getElementById('cor_cpf').value,telefone:document.getElementById('cor_tel').value,email:document.getElementById('cor_email').value,comissao_pct:parseFloat(document.getElementById('cor_pct').value)||3,status:document.getElementById('cor_status').value});
+  if(error){toast('Erro: '+error.message,true);return;}
+  closeModal('modalCorretor');toast('✅ Corretor salvo!');renderCorretores();loadDashboard();
+}
+async function deletarCorretor(id){
+  if(!confirm('Excluir este corretor?'))return;
+  await db.from('corretores').delete().eq('id',id);
+  toast('🗑️ Excluído.');renderCorretores();
+}
+
+// ─── PARCELAS ───
+async function renderParcelas(){
+  const hoje=new Date().toISOString().split('T')[0];
+  const {data:parc}=await db.from('parcelas').select('*, vendas(cliente_id, clientes(nome))').order('vencimento');
+  const getCliente=p=>p.vendas?.clientes?.nome||'—';
+  const todas=parc||[];
+  const atrasadas=todas.filter(p=>p.status==='Atrasado'||(p.status==='Pendente'&&p.vencimento<hoje));
+  const pendentes=todas.filter(p=>p.status==='Pendente'&&p.vencimento>=hoje);
+  const pagas=todas.filter(p=>p.status==='Pago');
+
+  const mkRow=(p,extra='')=>`<tr><td>${p.numero||'—'}</td><td><strong>${getCliente(p)}</strong></td><td style="font-weight:700">${fmt(p.valor)}</td><td>${fmtDate(p.vencimento)}</td><td>${bs(p.status==='Pendente'&&p.vencimento<hoje?'Atrasado':p.status)}</td><td>${p.status!=='Pago'?`<button class="btn btn-primary btn-sm" onclick="pagarParcela('${p.id}')">✓ Pagar</button>`:'—'}</td></tr>`;
+
+  document.getElementById('tbodyTodasParcelas').innerHTML=todas.length?todas.map(p=>mkRow(p)).join(''):'<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div><div>Nenhuma parcela cadastrada</div></div></td></tr>';
+  document.getElementById('tbodyAtrasadas').innerHTML=atrasadas.length?atrasadas.map(p=>`<tr><td><strong>${getCliente(p)}</strong></td><td style="font-weight:700">${fmt(p.valor)}</td><td>${fmtDate(p.vencimento)}</td><td><span class="badge badge-red">${diasAtraso(p.vencimento)} dias</span></td><td><button class="btn btn-primary btn-sm" onclick="pagarParcela('${p.id}')">✓ Pagar</button></td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--accent)">✅ Nenhuma parcela atrasada!</td></tr>';
+  document.getElementById('tbodyPendentes').innerHTML=pendentes.length?pendentes.map(p=>`<tr><td><strong>${getCliente(p)}</strong></td><td>${fmt(p.valor)}</td><td>${fmtDate(p.vencimento)}</td><td><button class="btn btn-primary btn-sm" onclick="pagarParcela('${p.id}')">✓ Pagar</button></td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text2)">Nenhuma parcela pendente</td></tr>';
+  document.getElementById('tbodyPagas').innerHTML=pagas.length?pagas.map(p=>`<tr><td><strong>${getCliente(p)}</strong></td><td>${fmt(p.valor)}</td><td>${fmtDate(p.data_pagamento)}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;padding:30px;color:var(--text2)">Nenhuma parcela paga</td></tr>';
+}
+async function pagarParcela(id){
+  const hoje=new Date().toISOString().split('T')[0];
+  const {error}=await db.from('parcelas').update({status:'Pago',data_pagamento:hoje}).eq('id',id);
+  if(error){toast('Erro: '+error.message,true);return;}
+  toast('✅ Parcela baixada com sucesso!');renderParcelas();loadDashboard();
+}
+async function salvarParcela(){
+  const valor=parseFloat(document.getElementById('p_valor').value);
+  const venc=document.getElementById('p_venc').value;
+  const clienteId=document.getElementById('p_cliente').value;
+  if(!valor||!venc){toast('Valor e vencimento são obrigatórios!',true);return;}
+  // cria venda simples se não houver
+  let vendaId=null;
+  const {data:vd}=await db.from('vendas').select('id').eq('cliente_id',clienteId).limit(1);
+  if(vd&&vd.length>0){vendaId=vd[0].id;}else{
+    const {data:nv}=await db.from('vendas').insert({cliente_id:clienteId,valor_total:valor,num_parcelas:1,status:'Ativo'}).select();
+    if(nv)vendaId=nv[0].id;
+  }
+  const {error}=await db.from('parcelas').insert({venda_id:vendaId,numero:parseInt(document.getElementById('p_num').value)||1,valor,vencimento:venc,status:document.getElementById('p_status').value});
+  if(error){toast('Erro: '+error.message,true);return;}
+  closeModal('modalParcela');toast('✅ Parcela lançada!');renderParcelas();loadDashboard();
+}
+
+// ─── INADIMPLÊNCIA ───
+async function renderInadimplencia(){
+  const hoje=new Date().toISOString().split('T')[0];
+  const {data:parc}=await db.from('parcelas').select('*, vendas(cliente_id, clientes(nome,id))').or(`status.eq.Atrasado,and(status.eq.Pendente,vencimento.lt.${hoje})`);
+  const lista=parc||[];
+  document.getElementById('kpiInadimParcelas').textContent=lista.length;
+  const valor=lista.reduce((a,p)=>a+Number(p.valor),0);
+  document.getElementById('kpiInadimValor').textContent=fmt(valor);
+  const clIds=new Set(lista.map(p=>p.vendas?.cliente_id).filter(Boolean));
+  document.getElementById('kpiInadimClientes').textContent=clIds.size;
+  const tbody=document.getElementById('tbodyInadim');
+  tbody.innerHTML=lista.length?lista.map(p=>`<tr><td><strong>${p.vendas?.clientes?.nome||'—'}</strong></td><td style="font-weight:700;color:var(--danger)">${fmt(p.valor)}</td><td>${fmtDate(p.vencimento)}</td><td><span class="badge badge-red">${diasAtraso(p.vencimento)} dias</span></td><td><button class="btn btn-primary btn-sm" onclick="pagarParcela('${p.id}')">✓ Regularizar</button></td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--accent)">✅ Nenhuma inadimplência!</td></tr>';
+}
+
+// ─── COMISSÕES ───
+async function renderComissoes(){
+  const {data,error}=await db.from('corretores').select('*').order('created_at',{ascending:false});
+  const tbody=document.getElementById('tbodyComissoes');
+  if(!data||data.length===0){tbody.innerHTML='<tr><td colspan="4"><div class="empty-state"><div class="icon">💸</div><div>Nenhum corretor cadastrado</div></div></td></tr>';return;}
+  tbody.innerHTML=data.map(c=>`<tr><td><strong>${c.nome}</strong></td><td>${c.comissao_pct||3}%</td><td>${bs(c.status)}</td><td><button class="btn btn-outline btn-sm">Ver Detalhes</button></td></tr>`).join('');
+}
+
+// ─── CLIENTES SELECT MODAL PARCELA ───
+async function loadClientesSelect(){
+  const {data}=await db.from('clientes').select('id,nome').order('nome');
+  const sel=document.getElementById('p_cliente');
+  sel.innerHTML=(data||[]).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+}
+
+// ─── NAV ───
+const pagesCfg={
+  dashboard:{title:'Dashboard',btn:'Atualizar',action:()=>loadDashboard()},
+  clientes:{title:'Clientes',btn:'+ Novo Cliente',action:()=>openModal('modalCliente')},
+  empreendimentos:{title:'Empreendimentos',btn:'+ Novo Empreendimento',action:()=>openModal('modalEmpr')},
+  corretores:{title:'Corretores',btn:'+ Novo Corretor',action:()=>openModal('modalCorretor')},
+  parcelas:{title:'Parcelas',btn:'+ Lançar Parcela',action:async()=>{await loadClientesSelect();openModal('modalParcela')}},
+  inadimplencia:{title:'Inadimplência',btn:'Atualizar',action:()=>renderInadimplencia()},
+  comissoes:{title:'Comissões',btn:'Atualizar',action:()=>renderComissoes()},
+};
+const renderMap={clientes:renderClientes,empreendimentos:renderEmpreendimentos,corretores:renderCorretores,parcelas:renderParcelas,inadimplencia:renderInadimplencia,comissoes:renderComissoes};
+
+function nav(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const cfg=pagesCfg[page];
+  document.getElementById('pageTitle').textContent=cfg.title;
+  document.getElementById('topbarBtn').textContent=cfg.btn;
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').style.display='none';
+  if(renderMap[page])renderMap[page]();
+}
+function topbarAction(){
+  const t=document.getElementById('pageTitle').textContent;
+  const k=Object.keys(pagesCfg).find(p=>pagesCfg[p].title===t);
+  if(k&&pagesCfg[k].action)pagesCfg[k].action();
+}
+
+// ─── INIT ───
+loadDashboard();
+</script>
+</body>
+</html>
